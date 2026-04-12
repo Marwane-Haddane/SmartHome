@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Eco Home </title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-database-compat.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Raleway:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #5C3A21;
+            --secondary: #5A7C0A;
+            --accent: #C8A67C;
+            --background: #FEFAE3;
+            --card-bg: #F7F4E8;
+            --shadow: 0 10px 30px rgba(92, 58, 33, 0.1);
+            --transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Raleway', sans-serif;
+            background-color: var(--background);
+            color: var(--primary);
+            min-height: 100vh;
+            padding: 2rem;
+            background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiPjxkZWZzPjxwYXR0ZXJuIGlkPSJwYXR0ZXJuIiB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSIgcGF0dGVyblRyYW5zZm9ybT0icm90YXRlKDEyMCkiPjxyZWN0IHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgZmlsbD0icmdiYSg2NSwgOTgsIDIsIDAuMDIpIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI3BhdHRlcm4pIi8+PC9zdmc+');
+        }
+
+        .dashboard {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 2rem;
+        }
+
+        .panel-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--primary);
+            text-align: center;
+            margin-bottom: 2rem;
+            grid-column: 1 / -1;
+            position: relative;
+            opacity: 0;
+            transform: translateY(-20px);
+            animation: fadeIn 0.8s 0.2s forwards;
+        }
+
+        @keyframes fadeIn {
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .panel-title::after {
+            content: '';
+            display: block;
+            width: 100px;
+            height: 3px;
+            background: var(--accent);
+            margin: 1rem auto 0;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+            border: 1px solid rgba(65, 98, 2, 0.2);
+            position: relative;
+            overflow: hidden;
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 5px;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+        }
+
+        .card:nth-child(2) { animation: fadeIn 0.8s 0.4s forwards; }
+        .card:nth-child(3) { animation: fadeIn 0.8s 0.6s forwards; }
+        .card:nth-child(4) { animation: fadeIn 0.8s 0.8s forwards; }
+        .card:nth-child(5) { animation: fadeIn 0.8s 1.0s forwards; }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(65, 98, 2, 0.15);
+        }
+
+        .card-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+            color: var(--primary);
+            position: relative;
+            display: inline-block;
+        }
+
+        .card-title::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 0;
+            width: 40px;
+            height: 2px;
+            background: var(--accent);
+        }
+
+        .weather-status {
+            grid-column: span 4;
+        }
+
+        .home-status {
+            grid-column: span 4;
+        }
+
+        .water-level-status {
+            grid-column: span 4;
+        }
+
+        .light-controls {
+            grid-column: span 12;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px dashed rgba(65, 98, 2, 0.2);
+        }
+
+        .status-indicator:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .status-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 1rem;
+            font-size: 1.5rem;
+            background: rgba(65, 98, 2, 0.1);
+            color: var(--primary);
+            transition: var(--transition);
+        }
+
+        .status-info {
+            flex: 1;
+        }
+
+        .status-label {
+            font-size: 0.9rem;
+            color: rgba(65, 98, 2, 0.7);
+            margin-bottom: 0.2rem;
+        }
+
+        .status-value {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .chart-container {
+            height: 200px;
+            position: relative;
+            margin: 1.5rem 0;
+        }
+
+        .water-level-visual {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 1.5rem 0;
+            position: relative;
+        }
+
+        .tank-container {
+            width: 120px;
+            height: 200px;
+            border: 3px solid var(--primary);
+            border-radius: 15px;
+            position: relative;
+            background: rgba(65, 98, 2, 0.05);
+            overflow: hidden;
+        }
+
+        .water-fill {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: linear-gradient(180deg, #4FC3F7, #0288D1);
+            transition: height 1s ease-in-out;
+            border-radius: 0 0 12px 12px;
+            animation: waterShimmer 3s ease-in-out infinite;
+        }
+
+        @keyframes waterShimmer {
+            0%, 100% { opacity: 0.8; }
+            50% { opacity: 1; }
+        }
+
+        .tank-markers {
+            position: absolute;
+            top: 0;
+            right: -30px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 10px 0;
+        }
+
+        .tank-marker {
+            font-size: 0.8rem;
+            color: var(--primary);
+            font-weight: 500;
+        }
+
+        .water-level-percentage {
+            position: absolute;
+            top: -40px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--primary);
+            text-shadow: 0 2px 4px rgba(65, 98, 2, 0.1);
+        }
+
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .control-btn {
+            background: var(--card-bg);
+            border: 2px solid rgba(65, 98, 2, 0.3);
+            border-radius: 12px;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .control-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(65, 98, 2, 0.1), rgba(65, 98, 2, 0));
+            opacity: 0;
+            transition: var(--transition);
+        }
+
+        .control-btn:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(65, 98, 2, 0.1);
+            border-color: var(--accent);
+        }
+
+        .control-btn:hover::before {
+            opacity: 1;
+        }
+
+        .control-btn.on {
+            background: rgba(65, 98, 2, 0.05);
+            border-color: var(--accent);
+        }
+
+        .control-btn.on .led-indicator {
+            background: var(--accent);
+            box-shadow: 0 0 15px rgba(107, 142, 35, 0.5);
+        }
+
+        .control-label {
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        .led-indicator {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 2px solid var(--accent);
+            transition: var(--transition);
+            position: relative;
+        }
+
+        .led-indicator::after {
+            content: '';
+            position: absolute;
+            top: -5px;
+            left: -5px;
+            right: -5px;
+            bottom: -5px;
+            border-radius: 50%;
+            border: 1px solid var(--accent);
+            opacity: 0;
+            transition: var(--transition);
+        }
+
+        .control-btn.on .led-indicator::after {
+            opacity: 0.3;
+            top: -8px;
+            left: -8px;
+            right: -8px;
+            bottom: -8px;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-top: 0.5rem;
+            transition: var(--transition);
+        }
+
+        .badge.rain {
+            background: rgba(0, 123, 255, 0.1);
+            color: #007BFF;
+            border: 1px solid rgba(0, 123, 255, 0.2);
+        }
+
+        .badge.no-rain {
+            background: rgba(40, 167, 69, 0.1);
+            color: #28A745;
+            border: 1px solid rgba(40, 167, 69, 0.2);
+        }
+
+        .badge.gas {
+            background: rgba(220, 53, 69, 0.1);
+            color: #DC3545;
+            border: 1px solid rgba(220, 53, 69, 0.2);
+        }
+
+        .badge.no-gas {
+            background: rgba(23, 162, 184, 0.1);
+            color: #17A2B8;
+            border: 1px solid rgba(23, 162, 184, 0.2);
+        }
+
+        .badge.low-water {
+            background: rgba(255, 193, 7, 0.1);
+            color: #FFC107;
+            border: 1px solid rgba(255, 193, 7, 0.3);
+        }
+
+        .badge.critical-water {
+            background: rgba(220, 53, 69, 0.1);
+            color: #DC3545;
+            border: 1px solid rgba(220, 53, 69, 0.3);
+        }
+
+        .badge.normal-water {
+            background: rgba(40, 167, 69, 0.1);
+            color: #28A745;
+            border: 1px solid rgba(40, 167, 69, 0.3);
+        }
+
+        @media (max-width: 1024px) {
+            .weather-status, .home-status, .water-level-status {
+                grid-column: span 6;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .weather-status, .home-status, .water-level-status {
+                grid-column: span 12;
+            }
+            
+            .controls-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            body {
+                padding: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <h1 class="panel-title">SMART ECO HOME</h1>
+        
+        <div class="card weather-status">
+            <h2 class="card-title">Weather Status</h2>
+            
+            <div class="status-indicator">
+                <div class="status-icon">🌡️</div>
+                <div class="status-info">
+                    <div class="status-label">Temperature</div>
+                    <div class="status-value" id="temp-value">-- °C</div>
+                </div>
+            </div>
+            
+            <div class="chart-container">
+                <canvas id="temp-chart"></canvas>
+            </div>
+            
+            <div class="status-indicator">
+                <div class="status-icon">🌧️</div>
+                <div class="status-info">
+                    <div class="status-label">Rain Status</div>
+                    <div class="status-value">
+                        <span class="badge" id="rain-status">Loading...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card home-status">
+            <h2 class="card-title">Air Status</h2>
+            
+            <div class="status-indicator">
+                <div class="status-icon">💧</div>
+                <div class="status-info">
+                    <div class="status-label">Air humidity</div>
+                    <div class="status-value" id="moisture-value">-- %</div>
+                </div>
+            </div>
+            
+            <div class="chart-container">
+                <canvas id="moisture-chart"></canvas>
+            </div>
+            
+            <div class="status-indicator">
+                <div class="status-icon">⚠️</div>
+                <div class="status-info">
+                    <div class="status-label">Air Quality</div>
+                    <div class="status-value">
+                        <span class="badge" id="gas-status">Loading...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card water-level-status">
+            <h2 class="card-title">Water Level Monitor</h2>
+            
+            <div class="status-indicator">
+                <div class="status-icon">🚰</div>
+                <div class="status-info">
+                    <div class="status-label">Tank Level</div>
+                    <div class="status-value" id="water-level-value">-- %</div>
+                </div>
+            </div>
+            
+            <div class="water-level-visual">
+                <div class="tank-container">
+                    <div class="water-level-percentage" id="water-percentage">0%</div>
+                    <div class="water-fill" id="water-fill" style="height: 0%"></div>
+                    <div class="tank-markers">
+                        <div class="tank-marker">100%</div>
+                        <div class="tank-marker">75%</div>
+                        <div class="tank-marker">50%</div>
+                        <div class="tank-marker">25%</div>
+                        <div class="tank-marker">0%</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="status-indicator">
+                <div class="status-icon">⚡</div>
+                <div class="status-info">
+                    <div class="status-label">Water Status</div>
+                    <div class="status-value">
+                        <span class="badge" id="water-status">Loading...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card light-controls">
+            <h2 class="card-title">Lighting Controls</h2>
+            
+            <div class="controls-grid">
+                <button class="control-btn" id="led1">
+                    <div class="control-label">Kitchen</div>
+                    <div class="led-indicator"></div>
+                </button>
+                
+                <button class="control-btn" id="led2">
+                    <div class="control-label">Bedroom</div>
+                    <div class="led-indicator"></div>
+                </button>
+                
+                <button class="control-btn" id="led3">
+                    <div class="control-label">Living Room</div>
+                    <div class="led-indicator"></div>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Firebase with your configuration
+        const firebaseConfig = {
+    	apiKey: "REAL_KEY",
+   	authDomain: "REAL_AUTH",
+    	databaseURL: "REAL_DB",
+    	projectId: "REAL_PROJECT",
+    	storageBucket: "REAL_BUCKET",
+    	messagingSenderId: "REAL_ID",
+    	appId: "REAL_APP_ID"
+	};
+        
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        // Initialize charts with elegant animation
+        const tempChart = new Chart(
+            document.getElementById('temp-chart').getContext('2d'), 
+            {
+                type: 'line',
+                data: {
+                    labels: Array(20).fill(''),
+                    datasets: [{
+                        label: 'Temperature',
+                        borderColor: '#416202',
+                        backgroundColor: 'rgba(65, 98, 2, 0.05)',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        fill: true,
+                        pointRadius: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { 
+                            beginAtZero: false,
+                            grid: { color: 'rgba(65, 98, 2, 0.05)' }
+                        },
+                        x: { display: false }
+                    },
+                    animation: {
+                        duration: 1000,
+                        easing: 'easeOutQuart'
+                    }
+                }
+            }
+        );
+
+        const moistureChart = new Chart(
+            document.getElementById('moisture-chart').getContext('2d'), 
+            {
+                type: 'line',
+                data: {
+                    labels: Array(20).fill(''),
+                    datasets: [{
+                        label: 'Moisture',
+                        borderColor: '#6B8E23',
+                        backgroundColor: 'rgba(107, 142, 35, 0.05)',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        fill: true,
+                        pointRadius: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { 
+                            beginAtZero: true,
+                            max: 100,
+                            grid: { color: 'rgba(65, 98, 2, 0.05)' }
+                        },
+                        x: { display: false }
+                    },
+                    animation: {
+                        duration: 1000,
+                        easing: 'easeOutQuart'
+                    }
+                }
+            }
+        );
+
+        // Firebase Data Listeners with smooth updates
+        db.ref('data/temperature').on('value', (snapshot) => {
+            const temp = snapshot.val();
+            if (temp !== null) {
+                tempChart.data.datasets[0].data.push(temp);
+                if(tempChart.data.datasets[0].data.length > 20) {
+                    tempChart.data.datasets[0].data.shift();
+                }
+                tempChart.update('none');
+                document.getElementById('temp-value').textContent = temp.toFixed(1) + ' °C';
+            }
+        });
+
+        db.ref('data/moisture').on('value', (snapshot) => {
+            const moisture = snapshot.val();
+            if (moisture !== null) {
+                moistureChart.data.datasets[0].data.push(moisture);
+                if(moistureChart.data.datasets[0].data.length > 20) {
+                    moistureChart.data.datasets[0].data.shift();
+                }
+                moistureChart.update('none');
+                document.getElementById('moisture-value').textContent = moisture.toFixed(1) + ' %';
+            }
+        });
+
+        db.ref('data/rain').on('value', (snapshot) => {
+            const isRaining = snapshot.val();
+            const rainBadge = document.getElementById('rain-status');
+            if (isRaining !== null) {
+                rainBadge.textContent = isRaining ? 'Rain Detected' : 'No Rain';
+                rainBadge.className = isRaining ? 'badge rain' : 'badge no-rain';
+            }
+        });
+
+        db.ref('data/gas').on('value', (snapshot) => {
+            const gasDetected = snapshot.val();
+            const gasBadge = document.getElementById('gas-status');
+            if (gasDetected !== null) {
+                gasBadge.textContent = gasDetected ? 'Gas Detected!' : 'Air Clean';
+                gasBadge.className = gasDetected ? 'badge gas' : 'badge no-gas';
+                
+                if (gasDetected) {
+                    gasBadge.style.animation = 'pulse 1.5s infinite';
+                    document.querySelector('.home-status .status-icon').style.color = '#DC3545';
+                } else {
+                    gasBadge.style.animation = '';
+                    document.querySelector('.home-status .status-icon').style.color = '';
+                }
+            }
+        });
+
+        // Water Level Monitoring
+        db.ref('data/waterLevel').on('value', (snapshot) => {
+            const waterLevel = snapshot.val();
+            if (waterLevel !== null) {
+                const percentage = Math.max(0, Math.min(100, waterLevel));
+                
+                // Update visual elements
+                document.getElementById('water-level-value').textContent = percentage.toFixed(1) + ' %';
+                document.getElementById('water-percentage').textContent = Math.round(percentage) + '%';
+                document.getElementById('water-fill').style.height = percentage + '%';
+                
+                // Update status badge
+                const statusBadge = document.getElementById('water-status');
+                if (percentage < 15) {
+                    statusBadge.textContent = 'Critical Level!';
+                    statusBadge.className = 'badge critical-water';
+                    statusBadge.style.animation = 'pulse 1.5s infinite';
+                } else if (percentage < 30) {
+                    statusBadge.textContent = 'Low Level';
+                    statusBadge.className = 'badge low-water';
+                    statusBadge.style.animation = '';
+                } else {
+                    statusBadge.textContent = 'Normal Level';
+                    statusBadge.className = 'badge normal-water';
+                    statusBadge.style.animation = '';
+                }
+            }
+        });
+
+        // LED Control with smooth transitions
+        ['led1', 'led2', 'led3'].forEach(led => {
+            const btn = document.getElementById(led);
+            
+            db.ref(`${led}/state`).on('value', (snapshot) => {
+                const isOn = snapshot.val();
+                btn.classList.toggle('on', isOn);
+                
+                btn.classList.add('transitioning');
+                setTimeout(() => {
+                    btn.classList.remove('transitioning');
+                }, 300);
+            });
+            
+            btn.addEventListener('click', () => {
+                const newState = !btn.classList.contains('on');
+                db.ref(`${led}/state`).set(newState);
+                
+                btn.style.transform = 'scale(0.95)';
+                setTimeout(() => {
+                    btn.style.transform = '';
+                }, 200);
+            });
+        });
+
+        // Add pulse animation for warnings
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes pulse {
+                0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.4); }
+                70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); }
+                100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Connection monitoring
+        db.ref('.info/connected').on('value', (snapshot) => {
+            if (snapshot.val() === true) {
+                console.log('Connected to Firebase');
+            } else {
+                console.log('Disconnected from Firebase');
+            }
+        });
+    </script>
+</body>
+</html>
