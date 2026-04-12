@@ -20,14 +20,14 @@ An intelligent, connected smart home system designed to **monitor environmental 
 ## 📸 Project Preview
 
 ### 🌐 Web Dashboard
-![Dashboard](images/platform.png)
-
+<img src="images/platform.jpeg" style="width: 80%; max-width: 600px;">
 ---
 
-### 🔧 Hardware Prototype
-![Project View 1](images/project1.jpg)  
-![Project View 2](images/project2.jpg)
-
+### 🔧 Hardware Prototype  
+<div style="display: flex; gap: 10px;">
+<img src="images/project1.jpeg" style="width: 40%; ">
+<img src="images/project2.jpg" style="width: 40%; ">
+</div>
 ---
 
 ## 🧠 System Overview
@@ -35,7 +35,7 @@ An intelligent, connected smart home system designed to **monitor environmental 
 This system integrates **sensors, automation logic, and cloud connectivity** to create a fully interactive smart home.
 
 ### ⚙️ Architecture
-![Architecture](images/architecture.png)
+<img src="images/architecture.jpeg" style="width: 80%; max-width: 600px;">
 
 ---
 
